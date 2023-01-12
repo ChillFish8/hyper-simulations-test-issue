@@ -1,11 +1,11 @@
-use std::convert::Infallible;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use hyper::{Body, Request, Response, Server};
 use hyper::server::accept::from_stream;
 use hyper::server::conn::Http;
 use hyper::service::{make_service_fn, service_fn};
+use hyper::{Body, Request, Response, Server};
+use std::convert::Infallible;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use turmoil::{Builder, lookup, net};
+use turmoil::{lookup, net, Builder};
 
 const PORT: u16 = 9999;
 
@@ -28,15 +28,10 @@ fn network_partition_after_init() -> turmoil::Result {
             tokio::task::spawn(async move {
                 let handler = service_fn(move |_: Request<Body>| {
                     tracing::info!("Got message!");
-                    async move {
-                        Ok::<_, Infallible>(Response::new(Body::from("Hello World!")))
-                    }
+                    async move { Ok::<_, Infallible>(Response::new(Body::from("Hello World!"))) }
                 });
 
-                if let Err(http_err) = Http::new()
-                        .serve_connection(tcp_stream, handler)
-                        .await
-                {
+                if let Err(http_err) = Http::new().serve_connection(tcp_stream, handler).await {
                     eprintln!("Error while serving HTTP connection: {}", http_err);
                 }
             });
@@ -112,7 +107,6 @@ fn test_theory() -> turmoil::Result {
     sim.run()
 }
 
-
 fn get_listen_addr() -> SocketAddr {
     (IpAddr::from(Ipv4Addr::UNSPECIFIED), PORT).into()
 }
@@ -121,10 +115,15 @@ fn addr(name: &str) -> SocketAddr {
     (lookup(name), PORT).into()
 }
 
-
 #[tokio::test]
 async fn network_partition_after_init_ok() -> anyhow::Result<()> {
-    println!("{}", String::from_utf8_lossy(&[0x47, 0x45, 0x54, 0x20, 0x2F, 0x20, 0x48, 0x54, 0x54, 0x50, 0x2F, 0x31, 0x2E, 0x31, 0xD, 0xA, 0xD, 0xA]));
+    println!(
+        "{}",
+        String::from_utf8_lossy(&[
+            0x47, 0x45, 0x54, 0x20, 0x2F, 0x20, 0x48, 0x54, 0x54, 0x50, 0x2F, 0x31, 0x2E, 0x31,
+            0xD, 0xA, 0xD, 0xA
+        ])
+    );
 
     let addr = "127.0.0.1:9990".parse::<SocketAddr>()?;
     tokio::spawn(async move {
@@ -154,9 +153,7 @@ async fn network_partition_after_init_ok() -> anyhow::Result<()> {
 
     let io = tokio::net::TcpStream::connect(addr).await.unwrap();
 
-    let (mut sender, connection) = hyper::client::conn::Builder::new()
-        .handshake(io)
-        .await?;
+    let (mut sender, connection) = hyper::client::conn::Builder::new().handshake(io).await?;
 
     tokio::spawn(async move {
         if let Err(e) = connection.await {
